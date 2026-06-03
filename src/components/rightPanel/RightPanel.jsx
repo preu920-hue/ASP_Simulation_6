@@ -3,6 +3,7 @@ import { SimulationContext } from "../../context/SimulationContext";
 import styles from "./rightPanel.module.css";
 import Swal from "sweetalert2";
 import { runLMS_AR, runMVDR, buildDeterministicSeed } from "../../utils/algorithms";
+import { buildNoisySamples, noisySamplesToChannelSignal } from "../../utils/buildNoisySamples";
 import { ECG_DATASET_OPTIONS, pathForDatasetId, publicAssetPath } from "../../utils/ecgDatasets.js";
 
 // ── Formula display components ──────────────────────────────────────────────
@@ -70,7 +71,8 @@ export const RightPanel = () => {
     generateECG, algorithmType, setAlgorithmType,
     setAlgoResults, setAlgorithmMeta, rawSamples,
     noise, setNoise, setApplyNoiseTrigger, applyNoiseTrigger,
-    setApplypsdTrigger, setNoisySamples, setFilteredSamples,
+    setNoisySamples, setFilteredSamples,
+    selectedChannels,
     signalType, setSignalType,
     uploadedSignalName, setUploadedSignalName,
     setUploadedSignalData,
@@ -109,7 +111,6 @@ export const RightPanel = () => {
     }
     setGenerateECG(false);
     setApplyNoiseTrigger(false);
-    setApplypsdTrigger(false);
     setNoisySamples([]);
     setFilteredSamples([]);
     setAlgoResults(null);
@@ -138,21 +139,43 @@ export const RightPanel = () => {
     markAction("ADD_NOISE");
   };
 
-  const runPsd = () => {
-    if (!generateECG) { Swal.fire({ icon: "info", title: "Oops...", text: "Please generate ECG signal first!" }); return; }
-    if (!applyNoiseTrigger) { Swal.fire({ icon: "info", title: "Add noise first", text: "Apply noise before computing PSD." }); return; }
-    setApplypsdTrigger(true);
-  };
-
   const runFilter = () => {
     if (!generateECG || !rawSamples || rawSamples.length === 0) {
       Swal.fire({ icon: "info", title: "Oops...", text: "Please generate ECG signal first!" });
       return;
     }
-    const ecgSignal = rawSamples.map(p => p["ECG_I"] ?? 0);
+    if (!applyNoiseTrigger) {
+      Swal.fire({
+        icon: "info",
+        title: "Add noise first",
+        text: "Apply at least one noise type so the frequency comparison (before vs after) is meaningful.",
+      });
+      return;
+    }
+
+    const channel = selectedChannels[0] || "ECG_I";
+    const samplesForAlgo = buildNoisySamples({
+      rawSamples,
+      selectedChannels,
+      noise,
+      time,
+      originalFs,
+    });
+    if (samplesForAlgo.length) setNoisySamples(samplesForAlgo);
+    const ecgSignal = noisySamplesToChannelSignal(samplesForAlgo, channel);
+    if (ecgSignal.length < 2) {
+      Swal.fire({
+        icon: "info",
+        title: "No noisy signal",
+        text: "Click 'Add Noise to Signal' first, then apply the algorithm.",
+      });
+      return;
+    }
+
+    const noiseKey = { baseline: noise.baseline, powerline: noise.powerline, emg: noise.emg };
     const runConfig =
       algorithmType === "AR Process"
-        ? { algorithmType, arP, arMu, arMC, csvFilePath }
+        ? { algorithmType, arP, arMu, arMC, csvFilePath, time, noise: noiseKey }
         : {
             algorithmType,
             mvdrM,
@@ -163,6 +186,8 @@ export const RightPanel = () => {
             mvdrInr,
             mvdrMC,
             csvFilePath,
+            time,
+            noise: noiseKey,
           };
     setAlgorithmMeta(runConfig);
     const runKey = JSON.stringify(runConfig);
@@ -204,7 +229,6 @@ export const RightPanel = () => {
       setAlgoResults(null);
       lastRunRef.current = { key: "", payload: null };
       setApplyNoiseTrigger(false);
-      setApplypsdTrigger(false);
       setNoisySamples([]);
       setFilteredSamples([]);
       prevPathRef.current = csvFilePath;
@@ -214,7 +238,6 @@ export const RightPanel = () => {
     prevPathRef,
     setAlgoResults,
     setApplyNoiseTrigger,
-    setApplypsdTrigger,
     setNoisySamples,
     setFilteredSamples,
   ]);
@@ -308,20 +331,13 @@ export const RightPanel = () => {
             </div>
           )}
 
+          <p className={styles.hint} style={{ marginTop: "10px" }}>
+            After you add noise, click Apply Algorithm — the output panel will show a before/after PSD
+            chart so you can see which frequencies were reduced.
+          </p>
           <div className={styles.psdContainer} style={{ marginTop: "12px", display: "flex", gap: "8px", flexDirection: "column" }}>
             <button id="applyAlgoBtn" onClick={runFilter}>Apply Algorithm</button>
           </div>
-        </div>
-
-        {/* PSD */}
-        <div id="psdPanel" className={styles.box}>
-          <h3>PSD Analysis</h3>
-          <p style={{ fontSize: "12px", color: "#555" }}>
-            Power Spectral Density of noisy and algorithm-processed ECG (add noise first, then apply algorithm for comparison).
-          </p>
-          <button type="button" onClick={runPsd}>
-            Compute PSD
-          </button>
         </div>
       </div>
     </div>

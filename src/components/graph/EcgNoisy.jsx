@@ -11,11 +11,8 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import {
-  addBaselineWander,
-  addPowerlineNoise,
-  addMuscleNoise,
-} from "../../utils/addNoise";
+import { buildNoisySamples } from "../../utils/buildNoisySamples";
+import { hoverAlongLineInteraction } from "../../utils/chartInteraction";
 
 ChartJS.register(
   LineElement,
@@ -25,25 +22,6 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-function resampleForDisplay(data, fsOriginal, fsUser) {
-  const step = fsOriginal / fsUser;
-
-  if (step <= 1) return data; // show all if user wants higher rate
-
-  const out = [];
-  for (let i = 0; i < data.length; i += step) {
-    out.push(data[Math.floor(i)]);
-  }
-  return out;
-}
-function inferFs(dataAll) {
-  if (dataAll.length < 2) return 500;
-  const dt = dataAll[1].x - dataAll[0].x;
-  // console.log(1 / dt);
-  if (dt > 0) return 1 / dt;
-
-  return 500;
-}
 
 export const EcgNoisy = () => {
   const {
@@ -65,41 +43,15 @@ export const EcgNoisy = () => {
   }, [noise, setApplyNoiseTrigger]);
 
   const data = useMemo(() => {
-  if (!rawSamples.length || !applyNoiseTrigger) return [];
-
-  const fsOriginal = inferFs(rawSamples);
-  const displayData = resampleForDisplay(rawSamples, fsOriginal, originalFs);
-  const limited = displayData.filter(p => p.x <= time);
-
-  // prepare noisy channels
-  const noisyChannels = {};
-
-  selectedChannels.forEach(ch => {
-    let channelSignal = limited.map(p => p[ch]);
-
-    if (noise.baseline) {
-      channelSignal = addBaselineWander(channelSignal, originalFs);
-    }
-    if (noise.powerline) {
-      channelSignal = addPowerlineNoise(channelSignal, originalFs);
-    }
-    if (noise.emg) {
-      channelSignal = addMuscleNoise(channelSignal);
-    }
-
-    noisyChannels[ch] = channelSignal;
-  });
-
-  // rebuild samples
-  return limited.map((p, i) => {
-    const obj = { x: p.x };
-    selectedChannels.forEach(ch => {
-      obj[ch] = noisyChannels[ch][i];
+    if (!rawSamples.length || !applyNoiseTrigger) return [];
+    return buildNoisySamples({
+      rawSamples,
+      selectedChannels,
+      noise,
+      time,
+      originalFs,
     });
-    return obj;
-  });
-
-}, [applyNoiseTrigger, noise, time, originalFs, rawSamples, selectedChannels]);
+  }, [applyNoiseTrigger, noise, time, originalFs, rawSamples, selectedChannels]);
 
   useEffect(() => {
     if (!applyNoiseTrigger || !data.length) {
@@ -125,6 +77,7 @@ export const EcgNoisy = () => {
     maintainAspectRatio: false,
     animation: true,
     parsing: false,
+    interaction: hoverAlongLineInteraction,
     plugins: {
       legend: {
         display: true,

@@ -26,7 +26,6 @@ export const SimulationProvider = ({ children }) => {
   const [generateECG, setGenerateECG] = useState(false);
   const [applyNoiseTrigger, setApplyNoiseTrigger] = useState(false);
   const [filteredECG, setFilteredECG] = useState(false);
-  const [applypsdTrigger, setApplypsdTrigger] = useState(false);
   const [algoResults, setAlgoResults] = useState(null);
   const [algorithmType, setAlgorithmType] = useState("AR Process");
   const [noisyECG, setNoisyECG] = useState([]);
@@ -205,7 +204,6 @@ export const SimulationProvider = ({ children }) => {
       colors, setColors,
       selectedLobe, setSelectedLobe,
       selectedChannels, setSelectedChannels,
-      applypsdTrigger, setApplypsdTrigger,
       filteredSamples, setFilteredSamples,
       algoResults, setAlgoResults,
       algorithmType, setAlgorithmType,

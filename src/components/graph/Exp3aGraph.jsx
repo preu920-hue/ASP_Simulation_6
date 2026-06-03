@@ -2,7 +2,9 @@ import { useContext } from "react";
 import { SimulationContext } from "../../context/SimulationContext";
 import { useCompareRuns } from "../../context/CompareRunsContext";
 import { InteractiveTutorChart } from "./InteractiveTutorChart.jsx";
+import { ArCoefficientsPanel } from "./ArCoefficientsPanel.jsx";
 import { CompareRunsChart } from "./CompareRunsChart.jsx";
+import { EcgPSDComparison } from "./EcgPSDComparison.jsx";
 import graphStyles from "./exp3aGraph.module.css";
 import {
   Chart as ChartJS,
@@ -76,9 +78,9 @@ export const Exp3aGraph = () => {
       labels: d.original.map((p) => p.x),
       datasets: [
         {
-          label: "Original ECG",
+          label: "Noisy ECG (input)",
           data: d.original.map((p) => p.y),
-          borderColor: "#0078d4",
+          borderColor: "#e63946",
           borderWidth: 1.2,
           pointRadius: 0,
         },
@@ -91,37 +93,13 @@ export const Exp3aGraph = () => {
         {
           label: "LMS-AR Predicted",
           data: d.predicted.map((p) => p.y),
-          borderColor: "#e63946",
+          borderColor: "#2dc653",
           borderWidth: 1.2,
           pointRadius: 0,
           borderDash: [4, 2],
         },
       ],
     };
-
-    const coefLabels = d.w_hist ? d.w_hist[0].map((_, i) => i + 1) : [];
-    const coefColors = ["#0078d4", "#e63946", "#2dc653", "#f4a261"];
-    const coefDatasets = d.w_hist
-      ? [
-          ...d.w_hist.slice(0, Math.min(4, d.P)).map((wArr, k) => ({
-            label: `w${k + 1} estimated`,
-            data: wArr,
-            borderWidth: 1.2,
-            pointRadius: 0,
-            borderColor: coefColors[k % 4],
-          })),
-          ...(d.w_opt || [])
-            .slice(0, Math.min(4, d.P))
-            .map((wOpt, k) => ({
-              label: `w${k + 1} optimal (${wOpt?.toFixed(4)})`,
-              data: new Array(coefLabels.length).fill(wOpt),
-              borderColor: coefColors[k % 4],
-              borderWidth: 1,
-              borderDash: [6, 3],
-              pointRadius: 0,
-            })),
-        ]
-      : [];
 
     return (
       <div id="algoOutputSection" className={graphStyles.panel}>
@@ -133,10 +111,12 @@ export const Exp3aGraph = () => {
           <Badge label="Samples" value={d.N} />
         </div>
 
+        <EcgPSDComparison />
+
         <div className={graphStyles.guideBox}>
           <p>
-            <b>How to read these plots:</b> MSE vs iterations should decrease and plateau when LMS-AR
-            converges. Closer overlap between original and predicted ECG means lower prediction error.
+            <b>Workflow:</b> First check the PSD chart above (frequency domain), then the time-domain
+            and learning plots below. MSE should decrease and plateau when LMS-AR converges.
           </p>
           <ul>
             <li>Try smaller μ if MSE oscillates.</li>
@@ -144,13 +124,15 @@ export const Exp3aGraph = () => {
           </ul>
         </div>
 
+        <h4 className={graphStyles.sectionHeading}>Step 2 — Time domain &amp; learning curves</h4>
+
         <InteractiveTutorChart
-          title="Original ECG"
+          title="Noisy ECG (algorithm input)"
           graphKind="filtering"
           params={params}
           height={280}
           chartData={originalEcgChart}
-          options={lineOpts("Original ECG", "Sample Index", "Amplitude (mV)")}
+          options={lineOpts("Noisy ECG (input)", "Sample Index", "Amplitude (mV)")}
         />
         <InteractiveTutorChart
           title="LMS-AR Predicted"
@@ -161,7 +143,7 @@ export const Exp3aGraph = () => {
           options={lineOpts("LMS-AR Predicted", "Sample Index", "Amplitude (mV)")}
         />
         <p className={graphStyles.describeBox}>
-          LMS learns AR coefficients from ECG data and predicts the next sample.
+          LMS learns AR coefficients from the noisy ECG and predicts the next sample (denoised estimate).
         </p>
 
         <CompareRunsChart
@@ -183,24 +165,8 @@ export const Exp3aGraph = () => {
           learning curves from different μ and P settings.
         </p>
 
-        {d.w_hist && coefDatasets.length > 0 && (
-          <>
-            <InteractiveTutorChart
-              title="AR Coefficients Convergence vs Wiener Optimal"
-              graphKind="weights"
-              params={params}
-              height={260}
-              chartData={{ labels: coefLabels, datasets: coefDatasets }}
-              options={lineOpts(
-                "AR Coefficients Convergence vs Wiener Optimal",
-                "Iteration",
-                "Coefficient Value"
-              )}
-            />
-            <p className={graphStyles.describeBox}>
-              Estimated AR weights (solid) approach Wiener-Hopf optimal values (dashed).
-            </p>
-          </>
+        {d.w_hist && d.w_opt && (
+          <ArCoefficientsPanel wHist={d.w_hist} wOpt={d.w_opt} orderP={d.P} />
         )}
       </div>
     );
@@ -217,9 +183,9 @@ export const Exp3aGraph = () => {
       labels: originalShown.map((p) => p.x),
       datasets: [
         {
-          label: "Original ECG",
+          label: "Noisy ECG (input)",
           data: originalShown.map((p) => p.y),
-          borderColor: "#0078d4",
+          borderColor: "#e63946",
           borderWidth: 1.2,
           pointRadius: 0,
         },
@@ -253,20 +219,24 @@ export const Exp3aGraph = () => {
           <Badge label="MC" value={d.monteCarloRuns} />
         </div>
 
+        <EcgPSDComparison />
+
         <div className={graphStyles.guideBox}>
           <p>
-            <b>How to read these plots:</b> The denoised ECG should track the original morphology with
-            reduced interference. The beampattern peak should align with θ_s and show a deep null near θ_i.
+            <b>Workflow:</b> Use the PSD chart above to see which frequencies were suppressed, then
+            review denoised ECG and beampattern below. Peak at θ_s, null near θ_i.
           </p>
         </div>
 
+        <h4 className={graphStyles.sectionHeading}>Step 2 — Time domain &amp; beampattern</h4>
+
         <InteractiveTutorChart
-          title="Original ECG"
+          title="Noisy ECG (algorithm input)"
           graphKind="filtering"
           params={params}
           height={280}
           chartData={originalEcgChart}
-          options={lineOpts("Original ECG", "Sample Index", "Amplitude (mV)")}
+          options={lineOpts("Noisy ECG (input)", "Sample Index", "Amplitude (mV)")}
         />
         <InteractiveTutorChart
           title="MVDR Denoised ECG"
@@ -277,7 +247,7 @@ export const Exp3aGraph = () => {
           options={lineOpts("MVDR Denoised ECG", "Sample Index", "Amplitude (mV)")}
         />
         <p className={graphStyles.describeBox}>
-          MVDR applies optimal weights to suppress interference while preserving the desired signal.
+          MVDR applies optimal weights to the noisy ECG to suppress interference while preserving morphology.
         </p>
 
         <CompareRunsChart

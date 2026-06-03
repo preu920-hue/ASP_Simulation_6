@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 import styles from "./interactiveTutorChart.module.css";
+import { hoverAlongLineInteraction } from "../../utils/chartInteraction";
 
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
 
@@ -113,9 +114,7 @@ export const InteractiveTutorChart = ({
     return {
       ...base,
       interaction: {
-        mode: "nearest",
-        intersect: false,
-        axis: "x",
+        ...hoverAlongLineInteraction,
         ...(base.interaction || {}),
       },
       onHover: (event, elements, chart) => {

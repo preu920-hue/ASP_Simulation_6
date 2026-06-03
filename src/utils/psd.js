@@ -23,3 +23,16 @@ export function computePSD(signal, fs) {
 
   return { freqs: freq, psd };
 }
+
+/** Average PSD in a narrow band around targetHz (for powerline / tone metrics). */
+export function psdPowerNearFreq(freqs, psd, targetHz, halfBandwidthHz = 2) {
+  let sum = 0;
+  let count = 0;
+  for (let i = 0; i < freqs.length; i++) {
+    if (Math.abs(freqs[i] - targetHz) <= halfBandwidthHz) {
+      sum += psd[i];
+      count++;
+    }
+  }
+  return count > 0 ? sum / count : 0;
+}

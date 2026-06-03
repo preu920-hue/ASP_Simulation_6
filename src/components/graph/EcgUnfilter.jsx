@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { hoverAlongLineInteraction } from "../../utils/chartInteraction";
 
 ChartJS.register(
   LineElement,
@@ -81,6 +82,7 @@ const chartData = { datasets };
     maintainAspectRatio: false,
     animation: true,
     parsing: false,
+    interaction: hoverAlongLineInteraction,
     plugins: {
       legend: {
         display: true,

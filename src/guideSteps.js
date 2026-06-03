@@ -58,23 +58,17 @@ export const guideSteps = [
   },
   {
     title: "7. Apply Algorithm",
-    content: "Click 'Apply Algorithm' to run the selected algorithm on the real ECG data.",
+    content:
+      "Click 'Apply Algorithm' (after adding noise). Results include a before/after PSD chart showing frequency reduction.",
     highlight: "applyAlgoBtn",
     requiredAction: "RUN_ALGORITHM",
     preferredPlacement: "left",
   },
   {
-    title: "8. Compute PSD",
+    title: "8. Output Graphs",
     content:
-      "Click 'Compute PSD' to view the Power Spectral Density of the noisy and processed ECG signals side by side.",
-    highlight: "psdPanel",
-    preferredPlacement: "left",
-  },
-  {
-    title: "9. Output Graphs",
-    content:
-      "Observe the output graphs — ECG prediction/denoising, MSE learning curve, and beampattern.",
-    highlight: "algoOutputSection",
+      "Start with the PSD comparison (red = noisy, green = after algorithm). Then review time-domain ECG, MSE, and beampattern plots.",
+    highlight: "psdComparisonSection",
     preferredPlacement: "right",
   },
   {

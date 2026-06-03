@@ -64,10 +64,10 @@ export const Instruction = () => {
           <p>
             <span>STEP 5: Run and Observe</span>
             <br />
-            Click <b>&quot;Apply Algorithm&quot;</b> to execute the simulation. Observe the output
-            graphs — ECG comparison, MSE learning curve, coefficient convergence (AR), or beampattern
-            (MVDR). Use <b>&quot;Compute PSD&quot;</b> to compare power spectra of the noisy and
-            processed signals.
+            Click <b>&quot;Apply Algorithm&quot;</b> after adding noise. The output panel opens with a
+            <b>before/after PSD chart</b> (frequency domain), then time-domain ECG plots, MSE learning
+            curve, coefficient convergence (AR), or beampattern (MVDR). Look for the 50 Hz peak to drop
+            when powerline noise was added.
           </p>
         </div>
       </div>
