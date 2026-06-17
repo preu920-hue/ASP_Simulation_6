@@ -22,6 +22,7 @@ export const CompareRunsChart = ({
   activeColor = "#e63946",
   activeBackgroundColor,
   activeFill = false,
+  chartDataOverride = null,
 }) => {
   const { activeRun, pinnedRuns } = compareState || {
     activeRun: null,
@@ -29,6 +30,22 @@ export const CompareRunsChart = ({
   };
 
   const chartData = useMemo(() => {
+    if (chartDataOverride?.datasets?.length) {
+      const pinnedDatasets = (pinnedRuns || []).map((run, index) => {
+        const color = PINNED_COLORS[index % PINNED_COLORS.length];
+        return {
+          label: `📌 ${run.label}`,
+          data: alignSeriesToLength(run.dataset, chartDataOverride.labels?.length ?? 0),
+          borderColor: hexWithAlpha(color, 0.55),
+          backgroundColor: "transparent",
+          ...PINNED_LINE_STYLE,
+        };
+      });
+      return {
+        labels: chartDataOverride.labels,
+        datasets: [...pinnedDatasets, ...chartDataOverride.datasets],
+      };
+    }
     if (!activeRun?.dataset?.length) {
       return { labels: [], datasets: [] };
     }
@@ -42,6 +59,7 @@ export const CompareRunsChart = ({
       pinnedRuns,
     });
   }, [
+    chartDataOverride,
     activeRun,
     activeLabel,
     activeColor,
@@ -50,7 +68,9 @@ export const CompareRunsChart = ({
     pinnedRuns,
   ]);
 
-  const canPin = Boolean(activeRun?.dataset?.length);
+  const canPin = Boolean(
+    chartDataOverride?.datasets?.length || activeRun?.dataset?.length
+  );
   const hasPinned = pinnedRuns.length > 0;
   const pinDisabled = !canPin || pinnedRuns.length >= MAX_PINNED_RUNS;
 

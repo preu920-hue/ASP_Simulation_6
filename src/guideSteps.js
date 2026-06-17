@@ -66,21 +66,21 @@ export const guideSteps = [
   {
     title: "8. Compute PSD",
     content:
-      "Click 'Compute PSD' to view the Power Spectral Density of the noisy and processed ECG signals side by side.",
+      "Click 'Compute PSD' to view the Power Spectral Density. AR processes have all-pole PSD S_x = σ²_w / |A(e^jω)|² (theory §3.2.2).",
     highlight: "psdPanel",
     preferredPlacement: "left",
   },
   {
     title: "9. Output Graphs",
     content:
-      "Observe the output graphs — ECG prediction/denoising, MSE learning curve, and beampattern.",
+      "Observe MSE learning curve with 95% Monte Carlo CI, AR coefficient convergence, MVDR covariance heatmap, and beampattern.",
     highlight: "algoOutputSection",
     preferredPlacement: "right",
   },
   {
     title: "Lab Completed",
     content:
-      "Excellent! You've explored AR prediction and MVDR beamforming on ECG. Experiment with different parameters and datasets.",
+      "You have explored the unified ASP pipeline: AR modelling → noise → LMS → MVDR → Monte Carlo validation on ECG.",
     preferredPlacement: "center",
   },
 ];

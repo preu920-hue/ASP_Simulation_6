@@ -63,6 +63,25 @@
   padding: 0;
 }
 
+.heatmapWrap {
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.heatmapTable {
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.heatmapCell {
+  width: 36px;
+  height: 28px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
 @media (max-width: 768px) {
   .panel {
     padding: 18px;

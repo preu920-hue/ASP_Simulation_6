@@ -20,15 +20,19 @@ const LmsFormula = ({ P, mu }) => (
       </div>
       <div className={styles.formulaRow}>
         <span className={styles.formulaLabel}>Weight Update</span>
-        <span className={styles.formulaEq}>w(n+1) = w(n) + μ·e(n)·x(n)</span>
+        <span className={styles.formulaEq}>w(n+1) = w(n) + 2μ·e(n)·x(n)</span>
       </div>
       <div className={styles.formulaRow}>
-        <span className={styles.formulaLabel}>Wiener Optimal</span>
-        <span className={styles.formulaEq}>w_opt = R⁻¹·p, &nbsp; Rᵢⱼ = r(|i−j|)</span>
+        <span className={styles.formulaLabel}>Yule-Walker</span>
+        <span className={styles.formulaEq}>a = −R⁻¹r, &nbsp; w_opt = R⁻¹p</span>
       </div>
       <div className={styles.formulaRow}>
         <span className={styles.formulaLabel}>Stability</span>
-        <span className={styles.formulaEq}>μ &lt; 1/(P·σ²ₓ) &nbsp;[P={P}, μ={mu.toFixed(5)}]</span>
+        <span className={styles.formulaEq}>0 &lt; μ &lt; 1/(P·P_x) &nbsp;[P={P}, μ={mu.toFixed(5)}]</span>
+      </div>
+      <div className={styles.formulaRow}>
+        <span className={styles.formulaLabel}>Misadjustment</span>
+        <span className={styles.formulaEq}>M ≈ μ·tr(R)</span>
       </div>
     </div>
   </div>
@@ -44,7 +48,11 @@ const MvdrFormula = ({ M, thetaS, thetaI }) => (
       </div>
       <div className={styles.formulaRow}>
         <span className={styles.formulaLabel}>Covariance Est.</span>
-        <span className={styles.formulaEq}>R̂ = (1/K) Σₖ x(k)·xᴴ(k)</span>
+        <span className={styles.formulaEq}>R̂ = (1/N) Σₙ x(n)·xᴴ(n)</span>
+      </div>
+      <div className={styles.formulaRow}>
+        <span className={styles.formulaLabel}>Diag. Loading</span>
+        <span className={styles.formulaEq}>R̂_DL = R̂ + δI</span>
       </div>
       <div className={styles.formulaRow}>
         <span className={styles.formulaLabel}>MVDR Weights</span>
@@ -71,6 +79,7 @@ export const RightPanel = () => {
     setAlgoResults, setAlgorithmMeta, rawSamples,
     noise, setNoise, setApplyNoiseTrigger, applyNoiseTrigger,
     setApplypsdTrigger, setNoisySamples, setFilteredSamples,
+    noisySamples,
     signalType, setSignalType,
     uploadedSignalName, setUploadedSignalName,
     setUploadedSignalData,
@@ -90,6 +99,7 @@ export const RightPanel = () => {
   const [mvdrSnr, setMvdrSnr] = useState(20);
   const [mvdrInr, setMvdrInr] = useState(25);
   const [mvdrMC, setMvdrMC] = useState(50);
+  const [mvdrDiagLoad, setMvdrDiagLoad] = useState(0.01);
 
   const lastRunRef = useRef({ key: "", payload: null });
 
@@ -150,9 +160,18 @@ export const RightPanel = () => {
       return;
     }
     const ecgSignal = rawSamples.map(p => p["ECG_I"] ?? 0);
+    const noisySignal = applyNoiseTrigger && noisySamples.length
+      ? noisySamples.map(p => p["ECG_I"] ?? 0)
+      : null;
+    const algoOptions = {
+      noisySignal,
+      noiseConfig: applyNoiseTrigger ? noise : null,
+      fs: Number(originalFs) || 360,
+      diagLoad: mvdrDiagLoad,
+    };
     const runConfig =
       algorithmType === "AR Process"
-        ? { algorithmType, arP, arMu, arMC, csvFilePath }
+        ? { algorithmType, arP, arMu, arMC, csvFilePath, hasNoise: Boolean(noisySignal) }
         : {
             algorithmType,
             mvdrM,
@@ -162,7 +181,9 @@ export const RightPanel = () => {
             mvdrSnr,
             mvdrInr,
             mvdrMC,
+            mvdrDiagLoad,
             csvFilePath,
+            hasNoise: Boolean(noisySignal),
           };
     setAlgorithmMeta(runConfig);
     const runKey = JSON.stringify(runConfig);
@@ -179,18 +200,18 @@ export const RightPanel = () => {
     }
     let payload = null;
     if (algorithmType === "AR Process") {
-      const sigma2 = ecgSignal.reduce((s, v) => s + v * v, 0) / ecgSignal.length;
-      const muMax = 1 / (arP * sigma2 + 1e-6);
+      const px = ecgSignal.reduce((s, v) => s + v * v, 0) / ecgSignal.length;
+      const muMax = 1 / (arP * px + 1e-6);
       if (arMu > muMax * 0.8) {
-        Swal.fire({ icon: "warning", title: "Stability Warning", text: `μ = ${arMu.toFixed(5)} may be too large. Recommended μ < ${(muMax * 0.5).toExponential(3)}` });
+        Swal.fire({ icon: "warning", title: "Stability Warning", text: `μ = ${arMu.toFixed(5)} may be too large (theory: 0 < μ < 1/(P·P_x)). Recommended μ < ${(muMax * 0.5).toExponential(3)}` });
       }
       const seed = buildDeterministicSeed(runConfig);
-      const results = runLMS_AR(ecgSignal, arP, arMu, arMC, seed);
+      const results = runLMS_AR(ecgSignal, arP, arMu, arMC, seed, algoOptions);
       if (!results) { Swal.fire({ icon: "error", title: "Error", text: "Insufficient ECG data." }); return; }
       payload = { type: "AR Process", data: results };
       setFilteredSamples(results.predicted.map((p) => ({ y: p.y })));
     } else {
-      const results = runMVDR(ecgSignal, mvdrM, mvdrSnap, mvdrThetaS, mvdrThetaI, mvdrSnr, mvdrInr, mvdrMC);
+      const results = runMVDR(ecgSignal, mvdrM, mvdrSnap, mvdrThetaS, mvdrThetaI, mvdrSnr, mvdrInr, mvdrMC, algoOptions);
       payload = { type: "MVDR Beamformer", data: results };
       setFilteredSamples(results.denoised.map((p) => ({ y: p.y })));
     }
@@ -302,9 +323,12 @@ export const RightPanel = () => {
               <input type="range" min="0" max="30" step="1" value={mvdrSnr} onChange={e => setMvdrSnr(Number(e.target.value))} />
               <label>INR: <strong>{mvdrInr} dB</strong></label>
               <input type="range" min="10" max="40" step="1" value={mvdrInr} onChange={e => setMvdrInr(Number(e.target.value))} />
+              <label>Diagonal Loading δ: <strong>{mvdrDiagLoad.toFixed(3)}</strong></label>
+              <input type="range" min="0.001" max="0.1" step="0.001" value={mvdrDiagLoad} onChange={e => setMvdrDiagLoad(Number(e.target.value))} />
+              <span className={styles.hint}>Range: 0.001–0.1 · R̂_DL = R̂ + δI for stability</span>
               <label>Monte Carlo Runs: <strong>{mvdrMC}</strong></label>
               <input type="range" min="10" max="100" step="10" value={mvdrMC} onChange={e => setMvdrMC(Number(e.target.value))} />
-              <span className={styles.hint}>Range: 10–100 · Averaged beampattern</span>
+              <span className={styles.hint}>Range: 10–100 · Averaged beampattern (N_MC ≥ 20 recommended)</span>
             </div>
           )}
 

@@ -2,10 +2,10 @@ import { useState } from "react";
 import styles from "./learningPanels.module.css";
 
 const mistakes = [
-  { id:1, title:"μ Too Large (LMS-AR)", mistake:"Setting μ > 0.01 for ECG data", effect:"LMS weights diverge — MSE explodes instead of converging", fix:"Use μ < 1/(P × signal_variance). For ECG, try μ ≈ 0.001" },
-  { id:2, title:"AR Order Too High", mistake:"Setting P > 10 for short ECG segments", effect:"Overfitting to noise, very slow convergence, high compute cost", fix:"Use P = 4 to 6 for ECG. Higher P needs much more data to converge" },
-  { id:3, title:"Too Few Monte Carlo Runs", mistake:"Using MC runs < 20", effect:"MSE learning curve is noisy and unreliable — can't see true convergence", fix:"Use minimum 50 runs for a smooth, statistically reliable MSE average" },
-  { id:4, title:"MVDR: Too Few Snapshots", mistake:"Using Snapshots K < 100", effect:"Covariance matrix R is poorly estimated → beampattern becomes inaccurate, null disappears", fix:"Use K ≥ 256 for reliable R estimation and accurate null placement" },
+  { id:1, title:"μ Too Large (LMS-AR)", mistake:"Setting μ above stability bound 1/(P·P_x)", effect:"LMS weights diverge — MSE explodes (§4.4.1)", fix:"Use w[n+1]=w[n]+2μ·e[n]·x[n] with small μ; for ECG try μ ≈ 0.001" },
+  { id:2, title:"AR Order Too High", mistake:"Setting P > 10 for short ECG segments", effect:"Overfitting to noise, slow convergence", fix:"Use P = 4–6; select order via AIC/BIC for longer records (§3.4)" },
+  { id:3, title:"Too Few Monte Carlo Runs", mistake:"Using N_MC < 20", effect:"Wide 95% CI — unreliable MSE average (§6.4)", fix:"Use 50–100 runs; CI narrows as N_MC increases" },
+  { id:4, title:"MVDR: Too Few Snapshots", mistake:"Using K < 2M snapshots", effect:"Poor R̂ estimate — weak null and unstable weights (§5.6)", fix:"Use K ≥ 256 and diagonal loading δ = 0.01–0.1" },
 ];
 
 const Card = ({ item }) => {

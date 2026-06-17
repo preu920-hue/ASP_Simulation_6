@@ -25,7 +25,7 @@ export const TopPanel = () => {
   return (
     <div className={styles.Container}>
       <div className={styles.panelContainer}>
-        <h1>Application and Usage of Filters on ECG Signal</h1>
+        <h1>Autoregressive Stochastic Processes &amp; MVDR Beamformer Lab</h1>
         <div className={styles.buttonContainer}>
           <button ref={buttonRef} className={styles.panelButton} onClick={toggleInstruction}>
             <span className={styles.buttonIcon}>ℹ️</span> Instructions
